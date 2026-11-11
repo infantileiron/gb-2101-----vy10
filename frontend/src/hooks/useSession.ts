@@ -1,0 +1,2 @@
+import{useEffect,useState}from 'react';import{me}from '../api/auth';import type{User}from '../types/entities';
+export function useSession(){const[user,setUser]=useState<User|null>(null);const[checking,setChecking]=useState(true);useEffect(()=>{if(localStorage.getItem('fresh-token'))me().then(setUser).catch(()=>localStorage.removeItem('fresh-token')).finally(()=>setChecking(false));else setChecking(false)},[]);return{user,setUser,checking,logout:()=>{localStorage.removeItem('fresh-token');setUser(null)}};}

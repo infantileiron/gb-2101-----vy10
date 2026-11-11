@@ -1,0 +1,3 @@
+import{datasetsApi}from '../api/datasets';import{experimentsApi}from '../api/experiments';import{runsApi}from '../api/runs';import{reviewsApi}from '../api/reviews';import{reportsApi}from '../api/reports';
+export const domainStore={async load(){const[datasets,experiments,runs,reviews,reports]=await Promise.all([datasetsApi.list(),experimentsApi.list(),runsApi.list(),reviewsApi.list(),reportsApi.list()]);return{datasets,experiments,runs,reviews,reports};},datasets:datasetsApi,experiments:experimentsApi,runs:runsApi,reviews:reviewsApi,reports:reportsApi};
+export type Domain=Awaited<ReturnType<typeof domainStore.load>>;

@@ -1,0 +1,2 @@
+import type{Run}from '../types/entities';import{number}from '../utils/format';
+export function TrialSummary({run}:{run:Run}){if(run.status!=='completed')return null;const r=run.result;return <div className="trial-summary"><div><span>站点加权效应 · B − A</span><strong>{number(r.effect)}<small> pp</small></strong></div><div><span>95% Bootstrap 区间</span><b>{number(r.ci_low)} 至 {number(r.ci_high)}</b></div><div><span>双侧置换 p 值</span><b>{number(r.p_value,4)}</b></div><div><span>有效批次 / 排除</span><b>{r.included} / {r.excluded}</b></div></div>}
