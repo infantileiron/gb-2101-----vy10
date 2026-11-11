@@ -7,6 +7,10 @@ class DatasetInput(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     source: str = Field(default="uploaded.csv", max_length=100)
     csv_text: str = Field(min_length=20, max_length=1000000)
+class SupplementInput(BaseModel):
+    source: str = Field(default="resubmission.csv", max_length=100)
+    revision: int = Field(ge=1, le=2147483647)
+    csv_text: str = Field(min_length=20, max_length=1000000)
 class ExperimentInput(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     dataset_id: str

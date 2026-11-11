@@ -1,2 +1,2 @@
-import{request,post}from './client';import type{Dataset}from '../types/entities';
-export const datasetsApi={list:()=>request<Dataset[]>('/datasets'),detail:(id:string)=>request<Dataset>('/datasets/'+id),create:(data:unknown)=>post<Dataset>('/datasets',data)};
+import{request,post}from './client';import type{Dataset,DatasetVersion,Supplement}from '../types/entities';
+export const datasetsApi={list:()=>request<Dataset[]>('/datasets'),detail:(id:string)=>request<Dataset>('/datasets/'+id),create:(data:unknown)=>post<Dataset>('/datasets',data),supplements:(id:string)=>request<Supplement[]>('/datasets/'+id+'/supplements'),submitSupplement:(id:string,data:unknown)=>post<Supplement>('/datasets/'+id+'/supplements',data),version:(id:string,version:number)=>request<DatasetVersion>(`/datasets/${id}/versions/${version}`)};

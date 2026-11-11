@@ -14,11 +14,11 @@
 
 | 实体 | 表 | 业务动作 | 前端页面 |
 |---|---|---|---|
-| Dataset | datasets | CSV 校验、持久化、逐批检查 | 数据批次 |
+| Dataset | datasets / supplements | CSV 校验、持久化、逐批检查、带修订号补报与版本留痕 | 数据批次 |
 | Experiment | experiments | 固定数据集、排除阈值、随机种子与重采样数 | 试验设计 |
-| AnalysisRun | runs | Redis 排队、后台计算、状态与失败原因 | 计算结果、总览 |
-| Review | reviews | 分析员提交、负责人通过或退回 | 研发复核 |
-| Report | reports | 验证复核关系、生成共享卷 CSV、授权下载 | 成果归档 |
+| AnalysisRun | runs | Redis 排队、后台计算、状态与失败原因、数据版本与失效标记 | 计算结果、总览 |
+| Review | reviews | 分析员提交、负责人通过或退回、随源数据更新自动失效 | 研发复核 |
+| Report | reports | 验证复核关系、生成共享卷 CSV、授权下载、失效后停止沿用 | 成果归档 |
 
 共享业务组件 `TrialSummary` 用于总览、计算结果、复核、归档；`RunChart` 用于总览与结果。公共组件 `PageTitle`、`StatusBadge`、`EmptyState`；hooks `useSession`、`useResource`。图表数据由后端计算返回，不在前端构造统计结果。
 
@@ -78,6 +78,21 @@ docker compose down -v --remove-orphans
 
 附带各组均值、样本标准差、四分位数，及温度和失重率的 Pearson r；零方差时 r 返回 null。不会把相关性说成因果。空组、样本不足、阈值无效会产生明确失败记录，禁止生成其复核和报告。
 
+## 称重补报、修订号与数据版本
+
+站点会补报称重数据。更正不再另建数据集，而是向原数据集提交带**修订号（revision）**的补报文件（`POST /datasets/{id}/supplements`，表头与导入一致）。系统按 `batch_id` 逐条比对现存记录，处理结果写入 `supplements` 表并可在数据批次页逐条查看原因：
+
+| 情形 | 判定 | 处理 |
+|---|---|---|
+| 同修订号且观测值完全相同 | `duplicate` 重复投递 | 不新增观测、不生成新版本 |
+| 补报修订号低于现存修订号 | `stale` 晚到旧修订 | 保留新值，绝不覆盖 |
+| 同修订号但观测值不同 | `quarantined` 同号异值 | 逐条隔离、写明现存值与补报值，不覆盖、不生成新版本 |
+| 新批次，或更高修订号且通过校验 | `applied` | 写入并生成新数据版本 |
+
+数据集维护完整 `versions` 快照（版本号、来源、时间、行数、SHA256、全部行），新版本只在有条目实际应用时产生；同一份补报重复提交保持幂等。观测行带 `revision` 字段，初始导入为 r0。
+
+**失效传导**：新版本生成后，所有基于旧版本完成的 AnalysisRun 标记为 `invalidated`（保留旧结果与共享卷 JSON 作为依据），其复核同步 `invalidated`、报告同步失效——复核审批与报告下载随即被后端拒绝，旧结果在重算期间仍可在页面查看。对同一方案重新提交计算得到的新运行绑定 `dataset_version`（当前版本），复核与报告基于新结果重建。运行在计算途中若数据集被更新，完成时会回读状态，不会把自身从失效改回完成。运行结果与报告 CSV 均记录对应数据版本。
+
 ## Seed 与本地开发
 
 `SEED_DEMO=true` 时启动后执行 seed；失败记录日志，API 启动不因 seed 失败而阻塞。`python -m scripts.seed_demo` 可重复执行，所有演示记录按稳定自然键 insert-on-conflict-do-nothing，不增加副本、不覆盖用户改名或审批。首次生成 480 条观测、2 个试验、2 个完成运行、1 通过/1 待审复核、1 报告和3账号。
@@ -112,14 +127,15 @@ SQLite/inline 为显式本地开发适配器，方便算法和 API 验证；容�
 | 枚举 | Python 定义与使用 | TypeScript 定义与使用 |
 |---|---|---|
 | Role | `src/constants/enums.py`，`services/auth.py` 鉴权 | `src/types/entities.ts` User.role、`constants/enums.ts` roles、`App.tsx` |
-| RunStatus | `constants/enums.py`、`models/entities.py` 默认状态，`services/run.py` 迁移 | `types/entities.ts` Run.status、`constants/enums.ts` runStatus、`StatusBadge.tsx` |
+| RunStatus | `constants/enums.py`，`models/entities.py` 默认状态，`services/run.py` 迁移 | `types/entities.ts` Run.status、`constants/enums.ts` runStatus、`StatusBadge.tsx` |
 | ReviewStatus | `constants/enums.py`、`models/entities.py`、`services/review.py` | `types/entities.ts` Review.status、`constants/enums.ts` reviewStatus、`StatusBadge.tsx` |
+| SupplementStatus | `constants/enums.py`、`services/dataset.py` 补报落库状态 | `types/entities.ts` Supplement.status、`constants/enums.ts` supplementStatus |
 
 ## 验收与已知差异
 
 真实结果见批次 `test-artifacts/gb-2101/TESTING.md`；测试脚本与截图不放源码内。标准库 Docker 主流程脚本在 `test-artifacts/gb-2101/tests/docker_acceptance.py`，默认 BASE_URL 为后端19200；截图脚本 `screenshots.cjs` 需要独立QA环境可用的 Playwright。
 
-本轮环境拒绝 Docker socket、浏览器进程无法启动，因此容器健康与真实页面截图尚未完成，状态为 partial。已执行的本地 API/算法测试使用 SQLite/inline。包源网络不可访问，React18 依赖未安装；TypeScript 与 Vite 构建只用机器上已有 React19 临时兼容依赖验证，不代表 React18 或 Docker 镜像构建通过。交付 package 保留 React18 要求。
+本轮环境拒绝 Docker socket、浏览器进程无法启动，因此容器健康与真实页面截图尚未完成，状态为 partial。已执行的本地 API/算法测试使用 SQLite/inline，覆盖补报四种判定、幂等重投、失效传导、重算版本绑定与计算途中失效竞态；React18 依赖已可安装，`tsc --noEmit && vite build` 在交付的 React18 要求下通过，但不代表 Docker 镜像构建通过。
 
 数据库按实体分别建表、以 TEXT JSON 保存字段；应用层校验引用，未配置数据库外键和逐字段索引，适用于演示规模。Redis 简单队列没有任务租约和崩溃重放；worker 崩溃后需重新提交未完成任务。未实现外部邮件分发或定时发送，本题聚焦试验分析与复核交接。
 

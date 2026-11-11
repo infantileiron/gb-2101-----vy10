@@ -8,7 +8,16 @@ class RunStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    INVALIDATED = "invalidated"
 class ReviewStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    INVALIDATED = "invalidated"
+class ReportStatus(str, Enum):
+    ACTIVE = "active"
+    INVALIDATED = "invalidated"
+class SupplementStatus(str, Enum):
+    APPLIED = "applied"
+    NO_CHANGE = "no_change"
+    QUARANTINED = "quarantined"

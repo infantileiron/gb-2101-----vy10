@@ -1,9 +1,12 @@
 export type User={email:string;name:string;role:'admin'|'analyst'|'viewer'};
-export type Row={batch_id:string;station:string;group:'A'|'B';loss:number;temperature:number};
-export type Dataset={id:string;name:string;source:string;row_count:number;stations:string[];created_at:string;rows?:Row[]};
+export type Row={batch_id:string;station:string;group:'A'|'B';loss:number;temperature:number;revision:number};
+export type DatasetVersion={version:number;source:string;created_at:string;row_count:number;checksum:string;note:string;rows?:Row[];supplement_id:string};
+export type SupplementEntry={batch_id:string;revision:number;station:string;group:'A'|'B';loss:number;temperature:number;outcome:'applied'|'duplicate'|'stale'|'quarantined';reason:string};
+export type Supplement={id:string;dataset_id:string;source:string;revision:number;status:'applied'|'no_change'|'quarantined';applied_count:number;duplicate_count:number;stale_count:number;quarantined_count:number;new_version:number;created_at:string;detail:SupplementEntry[]};
+export type Dataset={id:string;name:string;source:string;row_count:number;stations:string[];created_at:string;current_version:number;latest_revision:number;version_count:number;rows?:Row[];versions?:DatasetVersion[]};
 export type Experiment={id:string;name:string;dataset_id:string;max_loss:number;iterations:number;seed:number;created_at:string};
 export type Group={group:string;n:number;mean:number;sd:number;q25:number;median:number;q75:number};
 export type Result={effect:number;p_value:number;ci_low:number;ci_high:number;included:number;excluded:number;iterations:number;seed:number;groups:Group[];sites:{station:string;A:number;B:number;effect:number;weight:number}[];null_histogram:{x:number;count:number}[];temperature_correlation:number|null;checksum:string;interpretation:string};
-export type Run={id:string;experiment_id:string;status:'queued'|'running'|'completed'|'failed';result:Result;error:string;created_at:string};
-export type Review={id:string;run_id:string;comment:string;status:'pending'|'approved'|'rejected';reviewer:string;created_at:string};
-export type Report={id:string;title:string;run_id:string;review_id:string;created_at:string};
+export type Run={id:string;experiment_id:string;status:'queued'|'running'|'completed'|'failed'|'invalidated';result:Result;error:string;created_at:string;dataset_version:number;invalidated_at:string;invalidated_reason:string};
+export type Review={id:string;run_id:string;comment:string;status:'pending'|'approved'|'rejected'|'invalidated';reviewer:string;created_at:string;invalidated_at:string;invalidated_reason:string};
+export type Report={id:string;title:string;run_id:string;review_id:string;created_at:string;status:'active'|'invalidated';invalidated_at:string;invalidated_reason:string};
